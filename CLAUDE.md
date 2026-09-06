@@ -1,146 +1,121 @@
-# CLAUDE.md — Claude Architect Studio
+# CLAUDE.md — Client Project Status Dashboard
 
 ## Project
 
-Modular React app under `src/` demonstrating enterprise GenAI architecture patterns for a Claude Architect portfolio application. Runs via Vite dev server locally and deploys to Vercel with an Edge Function proxy (`api/messages.js`) for the Anthropic API.
+A client-facing project status dashboard. The **owner** (freelancer/agency) manages
+projects; **clients** sign in with an invite-only magic link and see only the projects
+they are waiting on — name, status, latest update, and buttons to the live/staging/repo
+URLs.
+
+React + Vite SPA, Vercel Edge Functions under `api/`, Neon Postgres for storage.
+
+> This repo was previously "Claude Architect Studio", a 5-tab GenAI demo. That app was
+> removed wholesale in the pivot; it is recoverable at the initial commit if ever needed.
 
 ## Stack
 
-- React (hooks, Vite), Recharts, Anthropic `/v1/messages` API
-- Fonts: Space Grotesk (UI), JetBrains Mono (data/code)
-- Models: `claude-sonnet-4-6` (primary), `claude-haiku-4-5` (prompt scoring); see `src/lib/claude.js` `MODELS`
+- React 18 (hooks, Vite 6) — no router, no UI library, no state library
+- Vercel Edge Functions (`api/`), Neon Postgres via `@neondatabase/serverless`
+- Resend for transactional email (plain `fetch`, no SDK)
+- Fonts: Space Grotesk (UI), JetBrains Mono (data/IDs/timestamps)
 
 ## File Structure
 
-```
-src/main.jsx                React entry point (imports App + styles.css)
-src/App.jsx                 Shell: header, tab state, tab switch
-src/styles.css              Global CSS — theme, animations, responsive grids
-src/theme.js                Color palette constants
-src/lib/claude.js           callClaude / streamClaude / parseJSON + MODELS
-src/lib/retrieval.js        Local chunking + TF-cosine similarity (RAG)
-src/lib/guardrails.js       PII redaction + guardrail enforcement
-src/components/Icon.jsx     Icon component + icons map
-src/components/tabs/*.jsx   One file per tab (RAGPipeline, AgentOrchestration, …)
-api/messages.js             Vercel Edge Function proxy for Anthropic API
-vite.config.js              Dev server config with API proxy
+```text
 index.html                  HTML shell
-CLAUDE.md                   This file
-reference.md                Full module specs, colors, roadmap (read on demand)
-README.md                   Project documentation
+vite.config.js              Vite config + local /api bridge
+vite-plugin-api.js          Dev-only: serves api/**/*.js as Edge-style handlers
+vercel.json                 SPA rewrite (everything but /api/* -> index.html)
+db/schema.sql               Idempotent DDL — the source of truth for the schema
+scripts/db.mjs              Runs a .sql file against DATABASE_URL
+scripts/seed.mjs            Upserts the owner + a demo client/project
+api/_lib/db.js              neon() client factory
+api/_lib/session.js         HMAC-SHA256 cookie sign/verify (Web Crypto)
+api/_lib/auth.js            requireUser(req, { role }) — the only authz entry point
+api/_lib/queries.js         Shared SQL, incl. the client-scoped project read
+api/auth/request.js         POST — request a magic link
+api/auth/verify.js          GET (inert interstitial) / POST (consume + set cookie)
+api/auth/logout.js          POST — clear the cookie
+api/data.js                 GET — the whole dashboard in one round trip
+api/admin.js                POST — owner-only writes, dispatched on `action`
+src/App.jsx                 Session bootstrap + view switch
+src/theme.js                Color palette + font constants
+src/styles.css              Global CSS — reset, .card, animations, .projects-grid
+src/lib/                    api.js, status.js, format.js, useRoute.js
+src/components/             Icon, Shell, Button, Field, StatusBadge, EmptyState, Toast
+src/views/                  LoginView, DashboardView, ProjectDetail, AdminView
+src/admin/                  ProjectEditor, UpdateComposer, ClientManager
 ```
 
 ## Commands
 
 ```bash
-# Local dev:
 npm install
-npm run dev              # Vite dev server at localhost:5173
-
-# Production deploy:
-vercel deploy --prod     # Set ANTHROPIC_API_KEY in Vercel env vars
-
-# Phase 2 deps:
-npm install @pinecone-database/pinecone @anthropic-ai/sdk langchain
-pip install anthropic pinecone-client pgvector langchain --break-system-packages
+npm run dev              # Vite at localhost:5173, /api/* served in-process
+npm run db:push          # Apply db/schema.sql to DATABASE_URL (idempotent)
+npm run db:seed          # Upsert the owner from OWNER_EMAIL + demo data
+vercel deploy --prod
 ```
 
-## Tabs (in order)
-
-1. **RAGPipeline** — local TF-cosine vector retrieval with real chunking/overlap, configurable Top-K, streaming Claude Q&A (`src/components/tabs/RAGPipeline.jsx`)
-2. **AgentOrchestration** — toggleable tool registry, animated ReAct trace (600ms/step reveal) with interruptible Stop button
-3. **PromptStudio** — prompt scoring (clarity/security/efficiency), enforced guardrails, one-click optimize, A/B compare
-4. **ArchitecturePatterns** — SVG diagrams: RAG, Multi-Agent, Secure Enterprise (draggable nodes, SVG/PNG export)
-5. **Monitoring** — token/latency/cost charts via Recharts (clearly badged demo data)
+Requires Node 20.6+ for `--env-file` (Node 22 is what's installed).
 
 ## Conventions
 
-- Don't add new tabs — extend existing ones with sub-views or config options.
-- One tab per file under `src/components/tabs/`; shared logic lives in `src/lib/`; one component per file.
-- Don't use localStorage — all state lives in React `useState`.
-- Don't import external UI libraries — inline styles + `src/styles.css` only, no new dependencies.
-- All Claude API calls MUST go through the shared `callClaude` / `streamClaude` helpers in `src/lib/claude.js`.
-- Use model IDs from `MODELS` in `src/lib/claude.js`; don't hardcode model strings elsewhere.
-- Structured outputs: request JSON in system prompt, then `parseJSON()` from `src/lib/claude.js`.
-- Don't hardcode API keys — the proxy (`api/messages.js` / `vite.config.js`) injects `ANTHROPIC_API_KEY`.
-- Don't modify the dark theme color palette without reading `reference.md` first; reuse `src/theme.js`.
+### Security — these are not style preferences
+
+- **Never accept a `client_id` (or any tenant identifier) from a client request.** Scope
+  comes only from the verified session cookie. The single authorized read is
+  `listProjectsFor()` in `api/_lib/queries.js`; add new client-facing reads there so
+  there is one place to audit.
+- All authorization goes through `requireUser()` in `api/_lib/auth.js`. Don't verify
+  cookies inline in a handler.
+- `api/auth/verify.js`: **`GET` must stay inert — only `POST` consumes the token.**
+  Corporate mail scanners (Defender Safe Links, Proofpoint) `GET` every link in an
+  inbound email; a consuming `GET` burns the link before the client clicks it. Do not
+  "simplify" this into a single GET handler.
+- `api/auth/request.js` always returns `200 { ok: true }` — for unknown emails, invalid
+  syntax, and rate-limited requests alike. Never branch the response on whether the
+  account exists.
+- Magic link tokens are stored **hashed** (`sha256hex`). Never write or log the raw token.
+- Compare signatures with `crypto.subtle.verify`, never with `===`.
+- Mutating endpoints are `POST`-only; that plus `SameSite=Lax` is the CSRF defense.
+
+### Code
+
+- All colors come from `src/theme.js`. Don't repeat raw hex inline.
+- All statuses come from `STATUSES` / `STATUS_IDS` in `src/lib/status.js`. It imports no
+  React so `api/admin.js` can import it too.
+  **`projects_status_chk` in `db/schema.sql` is a second copy of that list — change both.**
+- All browser fetches go through `src/lib/api.js`.
+- Every handler under `api/` is `export const config = { runtime: "edge" }`. No `node:`
+  imports — Neon HTTP, Resend, and Web Crypto all work on Edge.
+- The Neon HTTP driver has **no interactive transactions.** For an atomic multi-statement
+  write, use a single CTE statement (see `update.post` in `api/admin.js`).
+- Inline styles + `src/styles.css` only. No external UI libraries.
+- No localStorage — session lives in an httpOnly cookie, everything else in `useState`.
+- One component per file.
+
+## Environment
+
+| Variable | Where | Notes |
+|---|---|---|
+| `DATABASE_URL` | Vercel (all) + `.env` | Neon **pooled** string (`-pooler` host), `?sslmode=require` |
+| `SESSION_SECRET` | Vercel (all) + `.env` | `openssl rand -base64 48`. Different per environment. Rotating logs everyone out |
+| `RESEND_API_KEY` | Vercel; `.env` optional | Absent locally → link is logged to the terminal |
+| `MAIL_FROM` | Vercel + `.env` | Domain must be verified in Resend |
+| `APP_URL` | Vercel per-env + `.env` | Absolute origin. Local: `http://localhost:5173` |
+| `OWNER_EMAIL` / `OWNER_NAME` | `.env` only | Read by `scripts/seed.mjs`, never at runtime |
+| `DEV_MAGIC_LINK_LOG` | `.env` only | Ignored unless `VERCEL_ENV` is undefined |
+
+## Status Model
+
+`queued → discovery → design → building → review → blocked → live`
+
+`building` and `review` pulse in the UI — they mean "in motion" and "waiting on you".
 
 ## Current Status
 
-**Phase 1 + polish pass — Complete.** All 5 tabs functional with real Claude API integration. Recent polish:
+**Phase 0 — Complete.** Studio removed, docs rewritten, shell renders.
 
-- RAG now uses real local vector similarity (TF cosine over overlapping chunks) — not keyword matching
-- Guardrails enforced client-side: PII redaction + Cost Guard token cap; Hallucination/Toxicity added to system prompt
-- API error handling distinguishes network / 401 / 429 / 5xx
-- Responsive (single-column under 820px) + accessibility (focus rings, aria labels, button types)
-
-Remaining limitations (Phase 2 targets):
-
-- Agent tools are simulated (Claude generates the trace; no real execution) — clearly labeled in the UI
-- RAG retrieval is local, not a real vector DB / embedding API
-- Monitoring data is hardcoded/mock — clearly badged "Demo data"
-- Only RAG tab uses SSE streaming; Agent and PromptStudio await full responses
-
-## Implementation Plan
-
-### Phase 2 — Real Backend
-
-#### 2.1 Vector Retrieval in RAG Pipeline
-
-- Replace keyword-matching scorer with real embedding + Pinecone vector similarity
-- New backend: `api/embed.js` (Voyage/OpenAI embeddings), `api/search.js` (Pinecone query)
-- Wire embedding model dropdown and vector store dropdown to actual config
-- Env vars: `PINECONE_API_KEY`, `PINECONE_INDEX`, `VOYAGE_API_KEY`
-
-#### 2.2 Real Tool Execution in Agent Orchestration
-
-- Refactor agent loop to use Claude's native `tool_use` API instead of simulated JSON
-- Add `executeToolCall(toolName, input)` dispatcher
-- Implement real tools: `web_search` (Brave/Tavily), `code_executor` (sandboxed), `vector_db_query` (reuse 2.1)
-- New backend: `api/search-web.js` (search API proxy)
-- Env vars: `BRAVE_API_KEY` or `TAVILY_API_KEY`
-- Depends on: 2.1
-
-#### 2.3 SSE Streaming for Agent + Prompt Tabs
-
-- Extend `streamClaude()` usage to AgentOrchestration and PromptStudio
-- For JSON responses: accumulate stream, parse on completion, render progressively
-- Depends on: 2.2
-
-#### 2.4 Anthropic Usage API for Monitoring
-
-- Replace hardcoded mock data with real usage metrics
-- New backend: `api/usage.js` (Anthropic Admin API)
-- Add loading states and auto-refresh to Monitoring tab
-- Env vars: `ANTHROPIC_ADMIN_KEY`
-- Independent of 2.1-2.3 (can be done in parallel)
-
-### Phase 3 — Enterprise
-
-- [ ] Multi-tenant auth (Auth0/Cognito)
-- [ ] Per-user API key management
-- [ ] Audit logging (PostgreSQL/CloudWatch)
-- [ ] Cost alerts + Slack notifications
-- [ ] LangSmith/Langfuse trace integration
-
-### Phase 4 — MLOps
-
-- [ ] Prompt version control (git-style diff)
-- [ ] A/B prompt evaluation harness
-- [ ] Automated regression on prompt changes
-- [ ] Model fallback routing (Claude → GPT-4)
-
-### Implementation Order
-
-```text
-2.1 Vector Retrieval  ──┐
-                        ├──→ 2.2 Real Agent Tools ──→ 2.3 Streaming Extensions
-2.4 Usage API Monitoring (parallel, independent)
-
-Then: Phase 3 (3.1 Auth → 3.2 Keys → 3.3 Audit → 3.4 Alerts → 3.5 Traces)
-Then: Phase 4 (4.1 Versioning → 4.2 A/B → 4.3 Regression → 4.4 Fallback)
-```
-
-## Reference
-
-For full module specs, color palette, animation classes, prompt patterns, and job description mapping, see `reference.md`.
+Remaining: 1 (database) · 2 (dev API bridge) · 3 (auth) · 4 (read path) ·
+5 (admin writes) · 6 (deploy).

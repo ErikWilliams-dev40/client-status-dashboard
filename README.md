@@ -1,99 +1,73 @@
-# Claude Architect Studio
+# Project Status Dashboard
 
-Enterprise GenAI architecture platform showcasing RAG pipelines, AI agent orchestration, prompt engineering, architecture visualization, and operational monitoring — all powered by Claude.
+A small, client-facing dashboard for showing clients where their projects stand.
 
-## Features
+Clients sign in with an invite-only magic link — no passwords, no self-signup — and see
+only the projects they're waiting on: current status, the latest update, and buttons
+straight through to the live site, staging, or the repo. The owner manages everything
+from inside the same app, so changing a status doesn't need a redeploy.
 
-| Tab | Description | Status |
-|-----|-------------|--------|
-| **RAG Pipeline** | In-memory keyword retrieval with configurable Top-K, chunk size, and overlap. Live streaming Claude Q&A with source citations. | Phase 1 |
-| **Agent Orchestration** | Toggleable tool registry with animated ReAct trace. Simulated multi-step agent execution with thought/tool/observation steps. | Phase 1 |
-| **Prompt Studio** | Prompt scoring (clarity, security, efficiency), guardrail toggles, one-click optimize, and A/B comparison mode. | Phase 1 |
-| **Architecture Patterns** | Interactive SVG diagrams for RAG, Multi-Agent, and Secure Enterprise patterns. Drag-to-reposition nodes with SVG/PNG export. | Phase 1 |
-| **Monitoring** | Token usage, latency percentiles (p50/p95/p99), and model breakdown dashboards via Recharts. | Phase 1 |
+## Stack
 
-## Tech Stack
+React 18 + Vite 6 · Vercel Edge Functions · Neon Postgres · Resend
 
-- **Frontend:** React 18 (hooks, no build framework), Recharts
-- **Fonts:** Space Grotesk (UI), JetBrains Mono (data/code)
-- **API Proxy:** Vite dev proxy (local) / Vercel Edge Function (production)
-- **Model:** `claude-sonnet-4-20250514`, 1000 max tokens
-- **Styling:** Inline styles, dark theme (#070B14 base)
+No router, no UI library, no state library, no ORM. One runtime dependency beyond React
+(`@neondatabase/serverless`).
 
-## Quick Start
+## Getting started
+
+Requires Node 20.6+ (for `--env-file`).
 
 ```bash
-# Install dependencies
 npm install
-
-# Set your API key
-cp .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY
-
-# Run locally
-npm run dev
+cp .env.example .env      # then fill it in — see the table below
+npm run db:push           # create the schema (idempotent)
+npm run db:seed           # create your owner account
+npm run dev               # http://localhost:5173
 ```
 
-The app will be available at `http://localhost:5173`.
+Without `RESEND_API_KEY` set, sign-in links are printed to the dev server terminal
+instead of emailed, so you can develop the whole auth flow offline.
 
-## Environment Variables
+## Environment
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `ANTHROPIC_API_KEY` | Yes | Anthropic API key for Claude calls |
-| `PINECONE_API_KEY` | Phase 2 | Pinecone vector DB key |
-| `PINECONE_INDEX` | Phase 2 | Pinecone index name |
-| `VOYAGE_API_KEY` | Phase 2 | Voyage embedding model key |
-| `BRAVE_API_KEY` | Phase 2 | Brave Search API key (agent tools) |
+| Variable | Required | Notes |
+|---|---|---|
+| `DATABASE_URL` | yes | Neon **pooled** connection string (the `-pooler` host), `?sslmode=require` |
+| `SESSION_SECRET` | yes | `openssl rand -base64 48`. Use a different value per environment |
+| `APP_URL` | yes | Absolute origin, e.g. `http://localhost:5173` |
+| `RESEND_API_KEY` | prod | Omit locally to log links to the terminal |
+| `MAIL_FROM` | prod | e.g. `Status <status@example.com>`; domain verified in Resend |
+| `OWNER_EMAIL` | seed | Your email — becomes the owner account |
+| `OWNER_NAME` | seed | Optional display name |
 
-## Project Structure
+## How access works
 
-```
-ClaudeArchitectStudio.jsx   Single source of truth — all 5 tabs
-src/main.jsx                React entry point
-api/messages.js             Vercel Edge Function proxy for Anthropic API
-vite.config.js              Dev server config with API proxy
-index.html                  HTML shell
-CLAUDE.md                   AI assistant instructions
-reference.md                Full module specs, colors, roadmap
-```
+The owner creates a client, then invites an email address against it. That invite sends
+nothing — you tell the client to visit the site and enter their address themselves. They
+get a link valid for 15 minutes, single-use, which sets a 14-day session cookie.
 
-## Deployment
+A client only ever sees their own client's projects. Scope is derived from the signed
+session cookie and never from anything the browser sends, so there is no request a client
+can craft to widen it.
 
-### Vercel (Production)
+## Deploying
 
 ```bash
-# Deploy to Vercel
 vercel deploy --prod
 ```
 
-Set `ANTHROPIC_API_KEY` in your Vercel project environment variables. The Edge Function at `api/messages.js` proxies requests to the Anthropic API with server-side auth.
+Set every variable from the table in the Vercel project settings first, with `APP_URL`
+pointing at the real domain and a `SESSION_SECRET` distinct from your local one.
 
-### Local Development
+## Statuses
 
-The Vite dev server proxies `/api/messages` to `https://api.anthropic.com/v1/messages`, injecting the API key from your `.env` file.
+`Queued` → `Discovery` → `Design` → `In Build` → `Your Review` → `Blocked` → `Live`
 
-## Roadmap
+`In Build` and `Your Review` pulse in the UI — they're the two that mean something is
+moving or something is waiting on the client.
 
-### Phase 2 — Real Backend
-- [ ] Replace keyword retrieval with Pinecone/pgvector vector similarity search
-- [ ] Wire real tool execution in agent loop (web search, code sandbox)
-- [ ] Extend SSE streaming to Agent and Prompt Studio tabs
-- [ ] Connect Monitoring tab to Anthropic Usage API for live data
+## History
 
-### Phase 3 — Enterprise
-- [ ] Multi-tenant auth (Auth0/Cognito)
-- [ ] Per-user API key management
-- [ ] Audit logging (PostgreSQL/CloudWatch)
-- [ ] Cost alerts + Slack notifications
-- [ ] LangSmith/Langfuse trace integration
-
-### Phase 4 — MLOps
-- [ ] Prompt version control (git-style diff)
-- [ ] A/B prompt evaluation harness
-- [ ] Automated regression on prompt changes
-- [ ] Model fallback routing (Claude to GPT-4)
-
-## License
-
-Private — all rights reserved.
+This repo previously held *Claude Architect Studio*, a five-tab GenAI architecture demo.
+It was replaced wholesale and is preserved in the initial commit.

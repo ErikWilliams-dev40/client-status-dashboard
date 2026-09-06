@@ -1,17 +1,19 @@
 {
-  "name": "claude-architect-studio",
+  "name": "client-status-dashboard",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:push": "node --env-file=.env scripts/db.mjs db/schema.sql",
+    "db:seed": "node --env-file=.env scripts/seed.mjs"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^0.10.4",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "recharts": "^2.13.0"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
