@@ -115,7 +115,16 @@ Requires Node 20.6+ for `--env-file` (Node 22 is what's installed).
 
 ## Current Status
 
-**Phase 0 — Complete.** Studio removed, docs rewritten, shell renders.
+**Phases 0–2 — Complete.**
 
-Remaining: 1 (database) · 2 (dev API bridge) · 3 (auth) · 4 (read path) ·
-5 (admin writes) · 6 (deploy).
+- 0: studio removed, docs rewritten, shell renders.
+- 1: schema + migration/seed scripts + the scoped project read. DDL and the
+  scoping predicate verified against a throwaway Postgres 16 container.
+- 2: `/api/*` served in-process under `npm run dev`, with HMR, multi-`Set-Cookie`
+  support, and `_`-prefixed modules unroutable (matching Vercel).
+
+**Not yet verified against a real Neon endpoint:** `npm run db:push` and
+`npm run db:seed`. Both need `DATABASE_URL` — the SQL is proven, the drivers
+are not.
+
+Remaining: 3 (auth) · 4 (read path) · 5 (admin writes) · 6 (deploy).
