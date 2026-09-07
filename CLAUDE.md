@@ -42,7 +42,8 @@ src/App.jsx                 Session bootstrap + view switch
 src/theme.js                Color palette + font constants
 src/styles.css              Global CSS — reset, .card, animations, .projects-grid
 src/lib/                    api.js, status.js, format.js, useRoute.js
-src/components/             Icon, Shell, Button, Field, StatusBadge, EmptyState, Toast
+src/components/             Icon, Shell, Button, Field, StatusBadge, EmptyState,
+                            ProgressBar, LinkButton, Toast
 src/views/                  LoginView, DashboardView, ProjectDetail, AdminView
 src/admin/                  ProjectEditor, UpdateComposer, ClientManager
 ```
@@ -106,6 +107,7 @@ Requires Node 20.6+ for `--env-file` (Node 22 is what's installed).
 | `APP_URL` | Vercel per-env + `.env` | Absolute origin. Local: `http://localhost:5173` |
 | `OWNER_EMAIL` / `OWNER_NAME` | `.env` only | Read by `scripts/seed.mjs`, never at runtime |
 | `DEV_MAGIC_LINK_LOG` | `.env` only | Ignored unless `VERCEL_ENV` is undefined |
+| `NEON_FETCH_ENDPOINT` | `.env` only | Points the HTTP driver at a local Neon proxy. Ignored unless `VERCEL_ENV` is undefined |
 
 ## Status Model
 
@@ -115,16 +117,49 @@ Requires Node 20.6+ for `--env-file` (Node 22 is what's installed).
 
 ## Current Status
 
-**Phases 0–2 — Complete.**
+**Phases 0–4 — Complete.**
 
 - 0: studio removed, docs rewritten, shell renders.
 - 1: schema + migration/seed scripts + the scoped project read. DDL and the
   scoping predicate verified against a throwaway Postgres 16 container.
 - 2: `/api/*` served in-process under `npm run dev`, with HMR, multi-`Set-Cookie`
   support, and `_`-prefixed modules unroutable (matching Vercel).
+- 3: magic-link auth end to end — `session.js`, `auth.js`, the three
+  `api/auth/*` handlers, `api/data.js`, `LoginView`, session bootstrap.
+- 4: the client read path — `format.js`, `useRoute.js`, `Shell`, `StatusBadge`,
+  `EmptyState`, `ProgressBar`, `LinkButton`, `DashboardView`, `ProjectDetail`,
+  and the `SignedIn` landing pad in `App.jsx` replaced by the real thing.
 
-**Not yet verified against a real Neon endpoint:** `npm run db:push` and
-`npm run db:seed`. Both need `DATABASE_URL` — the SQL is proven, the drivers
-are not.
+Phase 3 was verified against Postgres 16 behind a local Neon HTTP proxy
+(`ghcr.io/timowilhelm/local-neon-http-proxy`), driving the real handlers through
+`npm run dev`. All seven checks in the plan pass, plus: logout clears the
+cookie, a `disabled_at` user is locked out on the next request and has their
+cookie cleared, requesting a new link invalidates the outstanding one, and a
+payload signed with the wrong secret is rejected.
 
-Remaining: 3 (auth) · 4 (read path) · 5 (admin writes) · 6 (deploy).
+Phase 4 was verified on the same rig, against the real seeded payload: owner sees
+both clients grouped; the client sees only their own two projects, with no
+`clients` key and no trace of the other tenant anywhere in the response; the
+`building`/`review` badges pulse; a project id the session can't see renders the
+not-found state. Every view was also render-tested against a project with every
+nullable field null — no `null`, `undefined`, `NaN`, or `Invalid Date` reaches
+the DOM — plus unit checks over `parseRoute` and every `format.js` helper.
+
+The local rig now needs no uncommitted edits: `NEON_FETCH_ENDPOINT` (dev-only,
+guarded on `VERCEL_ENV`) points the HTTP driver at the proxy, and the whole setup
+is written down under "Local development without Neon" in the README.
+
+**Still not verified against a real Neon endpoint:** `npm run db:push`. It uses
+`Pool` over WebSocket, which the local HTTP proxy does not speak; the schema was
+applied with `psql` instead. `npm run db:seed` (HTTP driver) is verified.
+
+**Not yet exercised in a real browser.** Phase 4 was verified by rendering the
+components with `react-dom/server` and by driving the API with `curl`; no
+headless browser is installed, so click-through, `popstate`, and the
+`stopPropagation` on card links are reasoned about but untested live.
+
+Remaining: 5 (admin writes) · 6 (deploy).
+
+There is still no way to create a client *user* through the UI — `db:seed` makes
+the owner and two demo clients only. Phase 5's `ClientManager` closes that; until
+then the README has the SQL.

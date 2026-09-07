@@ -1,4 +1,12 @@
-import { neon } from "@neondatabase/serverless";
+import { neon, neonConfig } from "@neondatabase/serverless";
+
+// Local development only: point the HTTP driver at a Neon proxy running on
+// localhost. The driver otherwise derives its endpoint as https://api.<host>/sql,
+// which no local proxy can serve. Guarded on VERCEL_ENV — always set on a
+// deploy — so it cannot take effect anywhere but a developer's machine.
+if (!process.env.VERCEL_ENV && process.env.NEON_FETCH_ENDPOINT) {
+  neonConfig.fetchEndpoint = process.env.NEON_FETCH_ENDPOINT;
+}
 
 let client;
 

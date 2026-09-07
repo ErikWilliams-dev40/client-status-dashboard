@@ -1,6 +1,5 @@
-// Centralized color palette for Claude Architect Studio.
-// Mirrors the dark theme documented in reference.md — import from here instead
-// of repeating raw hex inline.
+// Centralized color palette. Import from here instead of repeating raw hex
+// inline — the few literals in styles.css are the only other copies.
 export const colors = {
   bgBase: "#070B14", // page background
   bgCard: "#0D1420", // surfaces

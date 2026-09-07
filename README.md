@@ -29,6 +29,48 @@ npm run dev               # http://localhost:5173
 Without `RESEND_API_KEY` set, sign-in links are printed to the dev server terminal
 instead of emailed, so you can develop the whole auth flow offline.
 
+## Local development without Neon
+
+You can run the whole stack against Postgres in Docker — no Neon account, no network.
+The HTTP driver normally derives its endpoint as `https://api.<host>/sql`, so a local
+proxy needs `NEON_FETCH_ENDPOINT` to redirect it.
+
+```bash
+docker network create statusnet
+
+docker run -d --name status-pg --network statusnet \
+  -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres -e POSTGRES_DB=status \
+  postgres:16
+
+docker run -d --name status-neon-proxy --network statusnet -p 4444:4444 \
+  -e PG_CONNECTION_STRING=postgres://postgres:postgres@status-pg:5432/status \
+  ghcr.io/timowilhelm/local-neon-http-proxy:main
+```
+
+Then in `.env`:
+
+```bash
+DATABASE_URL=postgres://postgres:postgres@localhost:4444/status?sslmode=require
+NEON_FETCH_ENDPOINT=http://localhost:4444/sql
+```
+
+Apply the schema with `psql` rather than `npm run db:push` — `db:push` connects over
+WebSocket, which this proxy does not speak:
+
+```bash
+docker exec -i status-pg psql -U postgres -d status -v ON_ERROR_STOP=1 -f - < db/schema.sql
+npm run db:seed
+```
+
+`db:seed` creates the owner and two demo clients, but no *client* user — until the
+admin UI lands, add one by hand to exercise the client-scoped view:
+
+```sql
+INSERT INTO users (email, email_norm, name, role, client_id)
+SELECT 'client@example.com', 'client@example.com', 'Nora Bell', 'client', c.id
+FROM clients c WHERE c.name = 'Northwind Coffee';
+```
+
 ## Environment
 
 | Variable | Required | Notes |

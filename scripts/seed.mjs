@@ -3,9 +3,14 @@
 //
 // Idempotent: re-running updates rather than duplicating. The two demo clients
 // exist so the cross-client isolation check has something to prove.
-import { neon } from "@neondatabase/serverless";
+import { neon, neonConfig } from "@neondatabase/serverless";
 
 const { DATABASE_URL, OWNER_EMAIL, OWNER_NAME } = process.env;
+
+// Same dev-only local-proxy escape hatch as api/_lib/db.js.
+if (!process.env.VERCEL_ENV && process.env.NEON_FETCH_ENDPOINT) {
+  neonConfig.fetchEndpoint = process.env.NEON_FETCH_ENDPOINT;
+}
 
 if (!DATABASE_URL) {
   console.error("DATABASE_URL is not set (did you pass --env-file=.env?)");
