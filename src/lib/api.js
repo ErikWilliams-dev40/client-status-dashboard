@@ -39,3 +39,14 @@ export const requestMagicLink = (email) =>
   fetchJson("/api/auth/request", { method: "POST", body: { email } });
 
 export const logout = () => fetchJson("/api/auth/logout", { method: "POST" });
+
+/**
+ * Owner-only writes. Every admin mutation is one POST to /api/admin with an
+ * `action` discriminator; the server returns the mutated entity so the caller
+ * can patch state instead of refetching the whole dashboard.
+ *
+ * On failure this throws ApiError, whose `.body.field` names the offending
+ * input — the admin forms use it to attach the message to the right control.
+ */
+export const adminAction = (action, payload = {}) =>
+  fetchJson("/api/admin", { method: "POST", body: { action, ...payload } });

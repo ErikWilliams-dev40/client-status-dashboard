@@ -8,6 +8,12 @@ dist-ssr/
 # Vite cache
 .vite/
 
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+
 # Environment variables
 .env
 .env.local

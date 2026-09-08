@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { colors } from "./theme.js";
 import { Icon, icons } from "./components/Icon.jsx";
 import { Shell } from "./components/Shell.jsx";
+import { Button } from "./components/Button.jsx";
 import { LoginView } from "./views/LoginView.jsx";
 import { DashboardView } from "./views/DashboardView.jsx";
 import { ProjectDetail } from "./views/ProjectDetail.jsx";
+import { AdminView } from "./views/AdminView.jsx";
 import { ApiError, getData, logout } from "./lib/api.js";
 import { projectPath, useRoute } from "./lib/useRoute.js";
 
@@ -63,9 +65,62 @@ export default function App() {
     }
   }
 
+  /**
+   * Fold an admin write back into the single `data` object.
+   *
+   * The server returns project rows through listProjectsFor(), the same query
+   * the dashboard is built from, so a patched project is shape-identical to a
+   * fetched one and the views cannot tell the difference.
+   */
+  const applyWrite = useCallback((action, res) => {
+    setData((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev };
+
+      if (res?.project) {
+        const i = next.projects.findIndex((p) => p.id === res.project.id);
+        next.projects =
+          i === -1
+            ? [...next.projects, res.project]
+            : next.projects.map((p) => (p.id === res.project.id ? res.project : p));
+      }
+      // An archived project drops out of the authorized read, so it is removed
+      // here rather than patched — that mirrors what a refetch would return.
+      if (action === "project.archive" && res?.id) {
+        next.projects = next.projects.filter((p) => p.id !== res.id);
+      }
+      // Links are replaced wholesale server-side, so the whole array is swapped.
+      if (action === "project.links.set" && res?.projectId) {
+        next.projects = next.projects.map((p) =>
+          p.id === res.projectId ? { ...p, links: res.links } : p,
+        );
+      }
+      if (res?.client) {
+        const i = (next.clients ?? []).findIndex((c) => c.id === res.client.id);
+        next.clients =
+          i === -1
+            ? [...(next.clients ?? []), res.client]
+            : next.clients.map((c) => (c.id === res.client.id ? res.client : c));
+        // clientName is denormalized onto every project row by listProjectsFor,
+        // so a rename has to be mirrored there or the cards go stale.
+        next.projects = next.projects.map((p) =>
+          p.clientId === res.client.id ? { ...p, clientName: res.client.name } : p,
+        );
+      }
+      if (res?.user) {
+        const i = (next.users ?? []).findIndex((u) => u.id === res.user.id);
+        next.users =
+          i === -1
+            ? [...(next.users ?? []), res.user]
+            : next.users.map((u) => (u.id === res.user.id ? { ...u, ...res.user } : u));
+      }
+      return next;
+    });
+  }, []);
+
   if (phase === "loading") return <Booting />;
   if (phase === "anonymous") return <LoginView notice={notice} />;
-  return <SignedIn data={data} onSignOut={signOut} />;
+  return <SignedIn data={data} onSignOut={signOut} onApplied={applyWrite} />;
 }
 
 function Booting() {
@@ -95,19 +150,36 @@ function Booting() {
  * Shell wraps both branches once, outside the switch, so it survives navigation
  * instead of remounting.
  */
-function SignedIn({ data, onSignOut }) {
+function SignedIn({ data, onSignOut, onApplied }) {
   const { route, navigate } = useRoute();
   const goHome = useCallback(() => navigate("/"), [navigate]);
+  const isOwner = data.user?.role === "owner";
 
-  // /admin is parsed but unhandled until Phase 5; it falls through to here.
   const project =
     route.name === "project"
       ? data.projects.find((p) => p.id === route.projectId)
       : null;
 
+  // A client who types /admin lands on the dashboard rather than an error. This
+  // is presentation only — requireUser(req, { role: "owner" }) is the real gate,
+  // and it does not care what the browser renders.
+  const showAdmin = route.name === "admin" && isOwner;
+
+  const adminLink = isOwner ? (
+    <Button
+      variant="ghost"
+      icon={showAdmin ? "layers" : "settings"}
+      onClick={() => navigate(showAdmin ? "/" : "/admin")}
+    >
+      {showAdmin ? "Dashboard" : "Admin"}
+    </Button>
+  ) : null;
+
   return (
-    <Shell user={data.user} onSignOut={onSignOut} onHome={goHome}>
-      {route.name === "project" ? (
+    <Shell user={data.user} onSignOut={onSignOut} onHome={goHome} right={adminLink}>
+      {showAdmin ? (
+        <AdminView data={data} onApplied={onApplied} />
+      ) : route.name === "project" ? (
         <ProjectDetail project={project} user={data.user} onBack={goHome} />
       ) : (
         <DashboardView data={data} onOpenProject={(id) => navigate(projectPath(id))} />

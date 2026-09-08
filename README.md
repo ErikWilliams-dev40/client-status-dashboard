@@ -62,14 +62,9 @@ docker exec -i status-pg psql -U postgres -d status -v ON_ERROR_STOP=1 -f - < db
 npm run db:seed
 ```
 
-`db:seed` creates the owner and two demo clients, but no *client* user — until the
-admin UI lands, add one by hand to exercise the client-scoped view:
-
-```sql
-INSERT INTO users (email, email_norm, name, role, client_id)
-SELECT 'client@example.com', 'client@example.com', 'Nora Bell', 'client', c.id
-FROM clients c WHERE c.name = 'Northwind Coffee';
-```
+`db:seed` creates the owner and two demo clients, but no *client* user. Sign in as the
+owner, open **Admin → Clients**, and invite one — that is what the screen is for. (This
+used to require a manual `INSERT`; it no longer does.)
 
 ## Environment
 
@@ -108,6 +103,36 @@ pointing at the real domain and a `SESSION_SECRET` distinct from your local one.
 
 `In Build` and `Your Review` pulse in the UI — they're the two that mean something is
 moving or something is waiting on the client.
+
+## Project status
+
+**Phases 0–5 are complete:** the studio removal, schema and migration scripts, `/api/*`
+served in dev, magic-link auth, the client read path, and the owner's admin screen —
+projects, links, updates, clients, and client contacts, all editable in the app.
+
+Verified against a real Postgres 16 behind a local Neon HTTP proxy, and click-tested
+in a real browser with `npm run test:e2e`. That covers the two gaps the previous
+version of this file listed: `popstate` navigation and the card-link click behavior
+are now tested live rather than reasoned about.
+
+**One gap remains:** `npm run db:push` still hasn't run against a real Neon endpoint.
+It connects over WebSocket, which the local proxy doesn't speak, so the schema is
+applied with `psql` locally. `npm run db:seed` (HTTP driver) is verified.
+
+**Remaining work:** Phase 6 (deploy).
+
+## Testing
+
+```bash
+npm run test:e2e
+```
+
+Playwright drives the dev server against the real database — there are no mocks. The
+specs run serially against one Postgres, so don't parallelize them.
+
+Signing in inside a test does not scrape the magic link out of the dev log: the raw
+token is never stored (only its hash), so `e2e/helpers.js` mints its own token and
+then goes through the real `api/auth/verify`.
 
 ## History
 

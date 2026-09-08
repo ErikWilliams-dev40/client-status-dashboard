@@ -46,6 +46,8 @@ src/components/             Icon, Shell, Button, Field, StatusBadge, EmptyState,
                             ProgressBar, LinkButton, Toast
 src/views/                  LoginView, DashboardView, ProjectDetail, AdminView
 src/admin/                  ProjectEditor, UpdateComposer, ClientManager
+e2e/                        Playwright specs + helpers.js (mints its own tokens)
+playwright.config.js        Serial, one worker — the specs share one database
 ```
 
 ## Commands
@@ -55,6 +57,7 @@ npm install
 npm run dev              # Vite at localhost:5173, /api/* served in-process
 npm run db:push          # Apply db/schema.sql to DATABASE_URL (idempotent)
 npm run db:seed          # Upsert the owner from OWNER_EMAIL + demo data
+npm run test:e2e         # Playwright, against the dev server + real database
 vercel deploy --prod
 ```
 
@@ -92,6 +95,11 @@ Requires Node 20.6+ for `--env-file` (Node 22 is what's installed).
   imports — Neon HTTP, Resend, and Web Crypto all work on Edge.
 - The Neon HTTP driver has **no interactive transactions.** For an atomic multi-statement
   write, use a single CTE statement (see `update.post` in `api/admin.js`).
+- In `api/admin.js`, validate in JS *before* the query and let `errorResponse()` map
+  SQLSTATEs as a backstop. Never echo a driver error's `message` or `detail` to the
+  client — `detail` on a unique violation contains the conflicting row's values.
+- Every `UPDATE projects` names `updated_at` explicitly. There is no trigger, on purpose:
+  a sort-order-only reorder must *not* bump it, or every card reads "Updated just now".
 - Inline styles + `src/styles.css` only. No external UI libraries.
 - No localStorage — session lives in an httpOnly cookie, everything else in `useState`.
 - One component per file.
@@ -117,49 +125,41 @@ Requires Node 20.6+ for `--env-file` (Node 22 is what's installed).
 
 ## Current Status
 
-**Phases 0–4 — Complete.**
+**Phases 0–5 — Complete.**
 
 - 0: studio removed, docs rewritten, shell renders.
-- 1: schema + migration/seed scripts + the scoped project read. DDL and the
-  scoping predicate verified against a throwaway Postgres 16 container.
-- 2: `/api/*` served in-process under `npm run dev`, with HMR, multi-`Set-Cookie`
-  support, and `_`-prefixed modules unroutable (matching Vercel).
-- 3: magic-link auth end to end — `session.js`, `auth.js`, the three
-  `api/auth/*` handlers, `api/data.js`, `LoginView`, session bootstrap.
-- 4: the client read path — `format.js`, `useRoute.js`, `Shell`, `StatusBadge`,
-  `EmptyState`, `ProgressBar`, `LinkButton`, `DashboardView`, `ProjectDetail`,
-  and the `SignedIn` landing pad in `App.jsx` replaced by the real thing.
+- 1: schema + migration/seed scripts + the scoped project read.
+- 2: `/api/*` served in-process under `npm run dev`, with HMR and multi-`Set-Cookie`.
+- 3: magic-link auth end to end.
+- 4: the client read path — dashboard, project detail, badges, null-safe rendering.
+- 5: owner admin writes — `api/admin.js` (11 actions), `AdminView` + the three
+  managers, `Toast`, the `/admin` route, and an owner-only `users` key on
+  `/api/data` so contacts can be listed.
 
-Phase 3 was verified against Postgres 16 behind a local Neon HTTP proxy
-(`ghcr.io/timowilhelm/local-neon-http-proxy`), driving the real handlers through
-`npm run dev`. All seven checks in the plan pass, plus: logout clears the
-cookie, a `disabled_at` user is locked out on the next request and has their
-cookie cleared, requesting a new link invalidates the outstanding one, and a
-payload signed with the wrong secret is rejected.
+Phase 5 was verified against Postgres 16 behind the local Neon HTTP proxy, driving
+the real handlers. Every action was exercised by `curl` and the whole flow again
+through Playwright. Specifically confirmed: the two CTE writes are atomic (posting
+an update to an archived project writes *neither* row and 404s); `project.links.set`
+distinguishes "no such project" from "no links" via a separate `found` count, and
+its empty-array path really does clear the set; a bad element in a link list leaves
+the previous set untouched; `updated_at` moves on a real edit but *not* on a
+sort-order-only reorder; `status_at_time` records the status after the write; an
+owner cannot be disabled (`AND role = 'client'`); and duplicate invites return 409
+rather than a 500.
 
-Phase 4 was verified on the same rig, against the real seeded payload: owner sees
-both clients grouped; the client sees only their own two projects, with no
-`clients` key and no trace of the other tenant anywhere in the response; the
-`building`/`review` badges pulse; a project id the session can't see renders the
-not-found state. Every view was also render-tested against a project with every
-nullable field null — no `null`, `undefined`, `NaN`, or `Invalid Date` reaches
-the DOM — plus unit checks over `parseRoute` and every `format.js` helper.
+**Tenant isolation re-verified after the `users` key was added:** a client session's
+`/api/data` contains neither `clients` nor `users`, and `POST /api/admin` returns 403
+for every action on a client session — including one carrying another tenant's
+`client_id`, which changed nothing.
 
-The local rig now needs no uncommitted edits: `NEON_FETCH_ENDPOINT` (dev-only,
-guarded on `VERCEL_ENV`) points the HTTP driver at the proxy, and the whole setup
-is written down under "Local development without Neon" in the README.
+**Now exercised in a real browser.** `npm run test:e2e` runs Playwright against the
+dev server and the real database. The two Phase 4 gaps are closed: `popstate` and the
+card-link `stopPropagation` are tested live. `e2e/helpers.js` mints its own magic-link
+token rather than scraping the dev log — the raw token is never stored, so it cannot
+be read back — and then drives the real `api/auth/verify`.
 
-**Still not verified against a real Neon endpoint:** `npm run db:push`. It uses
-`Pool` over WebSocket, which the local HTTP proxy does not speak; the schema was
-applied with `psql` instead. `npm run db:seed` (HTTP driver) is verified.
+**Still not verified against a real Neon endpoint:** `npm run db:push`. It uses `Pool`
+over WebSocket, which the local HTTP proxy does not speak; the schema is applied with
+`psql` locally. `npm run db:seed` (HTTP driver) is verified.
 
-**Not yet exercised in a real browser.** Phase 4 was verified by rendering the
-components with `react-dom/server` and by driving the API with `curl`; no
-headless browser is installed, so click-through, `popstate`, and the
-`stopPropagation` on card links are reasoned about but untested live.
-
-Remaining: 5 (admin writes) · 6 (deploy).
-
-There is still no way to create a client *user* through the UI — `db:seed` makes
-the owner and two demo clients only. Phase 5's `ClientManager` closes that; until
-then the README has the SQL.
+Remaining: 6 (deploy).

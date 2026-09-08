@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { colors, FONT_MONO, FONT_UI } from "../theme.js";
 import { Icon, icons } from "./Icon.jsx";
 
@@ -16,15 +17,25 @@ const controlStyle = {
 /**
  * Labeled input / textarea / select. `as` picks the control; `icon` renders a
  * leading glyph inside an input.
+ *
+ * The label is associated by id rather than by wrapping the control. A <label>
+ * that wraps a <select> takes its accessible name from the label's entire text
+ * content — which includes every <option> — so the control ends up announced as
+ * "Client Choose a client… Acme Coffee Northwind…". Explicit htmlFor keeps the
+ * name to just the label.
  */
-export function Field({ label, hint, as = "input", icon, options, style, ...rest }) {
+export function Field({ label, hint, as = "input", icon, options, style, id, ...rest }) {
   const Control = as === "textarea" ? "textarea" : as === "select" ? "select" : "input";
   const pad = icon ? { paddingLeft: 36 } : null;
+  const autoId = useId();
+  const controlId = id ?? autoId;
+  const hintId = hint ? `${controlId}-hint` : undefined;
 
   return (
-    <label style={{ display: "block" }}>
+    <div style={{ display: "block" }}>
       {label && (
-        <span
+        <label
+          htmlFor={controlId}
           style={{
             display: "block",
             marginBottom: 6,
@@ -36,7 +47,7 @@ export function Field({ label, hint, as = "input", icon, options, style, ...rest
           }}
         >
           {label}
-        </span>
+        </label>
       )}
       <span style={{ position: "relative", display: "block" }}>
         {icon && (
@@ -54,6 +65,8 @@ export function Field({ label, hint, as = "input", icon, options, style, ...rest
           </span>
         )}
         <Control
+          id={controlId}
+          aria-describedby={hintId}
           style={{
             ...controlStyle,
             ...pad,
@@ -72,10 +85,13 @@ export function Field({ label, hint, as = "input", icon, options, style, ...rest
         </Control>
       </span>
       {hint && (
-        <span style={{ display: "block", marginTop: 6, fontSize: 12, color: colors.textMuted }}>
+        <span
+          id={hintId}
+          style={{ display: "block", marginTop: 6, fontSize: 12, color: colors.textMuted }}
+        >
           {hint}
         </span>
       )}
-    </label>
+    </div>
   );
 }

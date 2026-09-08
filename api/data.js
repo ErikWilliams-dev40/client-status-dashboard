@@ -1,6 +1,12 @@
 import { json } from "./_lib/db.js";
 import { requireUser } from "./_lib/auth.js";
-import { listClients, listProjectsFor, toProjectDTO } from "./_lib/queries.js";
+import {
+  listClientUsers,
+  listClients,
+  listProjectsFor,
+  toProjectDTO,
+  toUserDTO,
+} from "./_lib/queries.js";
 
 export const config = { runtime: "edge" };
 
@@ -24,7 +30,12 @@ export default async function handler(req) {
     user: { id: user.id, email: user.email, name: user.name, role: user.role },
     projects: rows.map(toProjectDTO),
   };
-  if (user.role === "owner") body.clients = await listClients(sql);
+  // Owner-only extras for the admin screen. A client session never sees these
+  // keys at all — not an empty array, which would still leak the count.
+  if (user.role === "owner") {
+    body.clients = await listClients(sql);
+    body.users = (await listClientUsers(sql)).map(toUserDTO);
+  }
 
   return json(body);
 }

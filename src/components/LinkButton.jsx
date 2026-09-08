@@ -14,6 +14,7 @@ export function LinkButton({ link, showHost = false }) {
   const kind = getLinkKind(link.kind);
   return (
     <a
+      data-testid="card-link"
       href={link.url}
       target="_blank"
       rel="noopener noreferrer"

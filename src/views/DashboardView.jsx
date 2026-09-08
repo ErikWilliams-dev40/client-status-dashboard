@@ -105,6 +105,7 @@ export function DashboardView({ data, onOpenProject }) {
                 // affordance, and :focus-visible in styles.css does the ring.
                 <div
                   key={p.id}
+                  data-testid="project-card"
                   role="button"
                   tabIndex={0}
                   onClick={open}
@@ -127,6 +128,7 @@ export function DashboardView({ data, onOpenProject }) {
                 >
                   <div style={{ display: "flex", alignItems: "start", gap: 10 }}>
                     <h3
+                      data-testid="project-name"
                       style={{
                         margin: 0,
                         flex: 1,
