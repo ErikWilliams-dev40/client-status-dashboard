@@ -23,6 +23,7 @@ export function Button({
   full = false,
   children,
   style,
+  className = "",
   ...rest
 }) {
   const off = disabled || loading;
@@ -30,20 +31,23 @@ export function Button({
     <button
       type="button"
       disabled={off}
+      className={`button button-${variant} ${className}`.trim()}
       style={{
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
         gap: 8,
-        padding: "10px 16px",
+        minHeight: 40,
+        padding: "9px 15px",
         width: full ? "100%" : undefined,
-        borderRadius: 8,
+        borderRadius: 10,
         fontFamily: FONT_UI,
         fontSize: 13,
         fontWeight: 600,
         cursor: off ? "not-allowed" : "pointer",
         opacity: off ? 0.55 : 1,
-        transition: "opacity 0.15s ease, border-color 0.15s ease",
+        boxShadow: variant === "primary" ? "0 1px 2px rgba(15,23,42,.12)" : undefined,
+        transition: "transform .15s ease, box-shadow .15s ease, border-color .15s ease, background .15s ease",
         ...VARIANTS[variant],
         ...style,
       }}
@@ -56,7 +60,7 @@ export function Button({
       ) : (
         icon && <Icon d={icons[icon]} size={14} color="currentColor" />
       )}
-      {children}
+      <span className="button-label">{children}</span>
     </button>
   );
 }

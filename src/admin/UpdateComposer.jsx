@@ -45,7 +45,7 @@ export function UpdateComposer({ projects, selected, onSelect, onAction, busy })
 
   return (
     <div style={{ display: "grid", gap: 20 }}>
-      <section className="card" style={{ padding: 20 }}>
+      <section className="card" style={{ padding: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
           <Icon d={icons.pencil} size={14} color={colors.blue} />
           <h3 style={{ margin: 0, fontFamily: FONT_UI, fontSize: 14, color: colors.textPrimary }}>
@@ -89,7 +89,7 @@ export function UpdateComposer({ projects, selected, onSelect, onAction, busy })
       </section>
 
       {selected && (
-        <section className="card" style={{ padding: 20 }}>
+        <section className="card" style={{ padding: 24 }}>
           <div
             style={{
               display: "flex",

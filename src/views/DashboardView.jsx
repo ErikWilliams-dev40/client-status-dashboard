@@ -1,5 +1,6 @@
+import { useMemo, useState } from "react";
 import { colors, FONT_MONO, FONT_UI } from "../theme.js";
-import { getStatus, NEEDS_ATTENTION } from "../lib/status.js";
+import { getStatus, NEEDS_ATTENTION, STATUSES } from "../lib/status.js";
 import { pluralize, relativeTime, absoluteTime } from "../lib/format.js";
 import { Icon, icons } from "../components/Icon.jsx";
 import { StatusBadge } from "../components/StatusBadge.jsx";
@@ -33,8 +34,20 @@ function groupByClient(projects) {
 export function DashboardView({ data, onOpenProject }) {
   const projects = data?.projects ?? [];
   const isOwner = data?.user?.role === "owner";
-  const groups = groupByClient(projects);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return projects.filter((p) => {
+      const matchesStatus = statusFilter === "all" || p.status === statusFilter;
+      const matchesQuery = !needle || [p.name, p.summary, p.clientName, p.phaseNote].some((value) => value?.toLowerCase().includes(needle));
+      return matchesStatus && matchesQuery;
+    });
+  }, [projects, query, statusFilter]);
+  const groups = groupByClient(visible);
   const attention = projects.filter((p) => NEEDS_ATTENTION.includes(p.status));
+  const active = projects.filter((p) => !["queued", "live"].includes(p.status)).length;
+  const live = projects.filter((p) => p.status === "live").length;
 
   if (projects.length === 0) {
     return (
@@ -53,17 +66,38 @@ export function DashboardView({ data, onOpenProject }) {
   return (
     <div className="fade-in">
       {isOwner ? (
-        <Heading title="All projects" sub={pluralize(projects.length, "project", "projects")} />
+        <Heading title="Project overview" sub="Monitor delivery across every client workspace." />
       ) : (
         <Heading
-          title={groups[0]?.clientName ?? "Your projects"}
-          sub={pluralize(projects.length, "project", "projects")}
+          title={projects[0]?.clientName ?? "Your projects"}
+          sub="A clear view of what’s moving, what needs input, and what’s already live."
         />
       )}
+
+      <div className="stats-grid" style={{ marginBottom: 28 }}>
+        <Stat label="Total projects" value={projects.length} icon="layers" color={colors.blue} />
+        <Stat label="In progress" value={active} icon="activity" color={colors.indigo} />
+        <Stat label="Live" value={live} icon="rocket" color={colors.green} />
+      </div>
 
       {attention.length > 0 && (
         <AttentionStrip items={attention} onOpenProject={onOpenProject} />
       )}
+
+      {(isOwner || projects.length > 4) && (
+        <div className="card" style={{ display: "flex", gap: 10, flexWrap: "wrap", padding: 12, marginBottom: 24 }}>
+          <div style={{ position: "relative", flex: "1 1 240px" }}>
+            <span style={{ position: "absolute", left: 12, top: 11, display: "inline-flex", pointerEvents: "none" }}><Icon d={icons.search} size={15} color={colors.textMuted} /></span>
+            <input className="field-control" aria-label="Search projects" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search projects or clients" style={{ width: "100%", minHeight: 38, padding: "8px 12px 8px 36px", borderRadius: 9, border: `1px solid ${colors.border}`, background: colors.bgCard, color: colors.textPrimary }} />
+          </div>
+          <select className="field-control" aria-label="Filter by status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ minHeight: 38, padding: "8px 34px 8px 11px", borderRadius: 9, border: `1px solid ${colors.border}`, background: colors.bgCard, color: colors.textSecondary }}>
+            <option value="all">All statuses</option>
+            {STATUSES.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
+          </select>
+        </div>
+      )}
+
+      {visible.length === 0 && <EmptyState icon="search" title="No matching projects" body="Try another search or clear the status filter." />}
 
       {groups.map((g) => (
         <section key={g.clientId} style={{ marginBottom: 32 }}>
@@ -100,45 +134,41 @@ export function DashboardView({ data, onOpenProject }) {
               const open = () => onOpenProject(p.id);
 
               return (
-                // Not a <button>: this card contains anchors, which a button may
-                // not legally wrap. role + tabIndex + keydown give the same
-                // affordance, and :focus-visible in styles.css does the ring.
                 <div
                   key={p.id}
                   data-testid="project-card"
-                  role="button"
-                  tabIndex={0}
                   onClick={open}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      open();
-                    }
-                  }}
-                  className="card"
+                  className="card interactive-card"
                   style={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: 12,
-                    padding: 18,
+                    gap: 14,
+                    padding: 20,
                     cursor: "pointer",
                     textAlign: "left",
-                    boxShadow: needsAttention ? `0 0 0 1px ${status.color}55` : undefined,
+                    boxShadow: needsAttention ? `inset 3px 0 0 ${status.color}, 0 8px 24px rgba(15,23,42,.04)` : undefined,
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "start", gap: 10 }}>
-                    <h3
+                    <button
+                      type="button"
                       data-testid="project-name"
+                      onClick={open}
                       style={{
+                        padding: 0,
+                        border: 0,
+                        background: "transparent",
+                        textAlign: "left",
+                        cursor: "pointer",
                         margin: 0,
                         flex: 1,
-                        fontSize: 15,
-                        fontWeight: 600,
+                        fontSize: 16,
+                        fontWeight: 700,
                         color: colors.textPrimary,
                       }}
                     >
                       {p.name}
-                    </h3>
+                    </button>
                     <StatusBadge status={p.status} size="sm" />
                   </div>
 
@@ -176,8 +206,9 @@ export function DashboardView({ data, onOpenProject }) {
 
                   <div
                     style={{
-                      paddingTop: 12,
-                      borderTop: `1px solid ${colors.border}66`,
+                      padding: "12px 13px",
+                      borderRadius: 10,
+                      background: colors.bgSubtle,
                       fontSize: 12,
                       lineHeight: 1.6,
                       color: colors.textSecondary,
@@ -185,7 +216,7 @@ export function DashboardView({ data, onOpenProject }) {
                   >
                     {latest ? (
                       <>
-                        <p className="clamp-2" style={{ margin: 0 }}>
+                        <p className="clamp-2" style={{ margin: 0, color: colors.textPrimary }}>
                           {latest.body}
                         </p>
                         <span
@@ -249,13 +280,23 @@ export function DashboardView({ data, onOpenProject }) {
 
 function Heading({ title, sub }) {
   return (
-    <div style={{ margin: "0 0 20px" }}>
-      <h1 style={{ margin: 0, fontSize: 20, fontWeight: 600, color: colors.textPrimary }}>
+    <div style={{ margin: "0 0 26px" }}>
+      <div className="eyebrow">Workspace</div>
+      <h1 className="page-title" style={{ marginTop: 7 }}>
         {title}
       </h1>
-      <div style={{ fontFamily: FONT_MONO, fontSize: 11, color: colors.textMuted, marginTop: 4 }}>
+      <div className="page-subtitle">
         {sub}
       </div>
+    </div>
+  );
+}
+
+function Stat({ label, value, icon, color }) {
+  return (
+    <div className="card metric-card" style={{ display: "flex", alignItems: "center", gap: 12, padding: "15px 16px" }}>
+      <span style={{ width: 36, height: 36, display: "grid", placeItems: "center", flexShrink: 0, borderRadius: 10, background: `${color}12` }}><Icon d={icons[icon]} size={16} color={color} /></span>
+      <span><strong style={{ display: "block", fontSize: 19, color: colors.textPrimary }}>{value}</strong><span style={{ display: "block", marginTop: 1, fontSize: 11, color: colors.textMuted }}>{label}</span></span>
     </div>
   );
 }
@@ -265,7 +306,7 @@ function AttentionStrip({ items, onOpenProject }) {
   return (
     <div
       className="card metric-card"
-      style={{ padding: 16, marginBottom: 24, display: "flex", flexWrap: "wrap", gap: 12 }}
+      style={{ padding: 16, marginBottom: 28, display: "flex", flexWrap: "wrap", gap: 12, borderColor: "#FDE68A", background: "linear-gradient(135deg,#FFFBEB,#fff)" }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <Icon d={icons.alert} size={16} color={colors.amber} />

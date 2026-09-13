@@ -8,31 +8,11 @@ import { EmptyState } from "../components/EmptyState.jsx";
 import { ProgressBar } from "../components/ProgressBar.jsx";
 import { LinkButton } from "../components/LinkButton.jsx";
 
-// api/data.js caps updates at the 10 most recent per project.
 const UPDATE_LIMIT = 10;
 
-/**
- * One project, selected client-side from the payload already in memory — there
- * is no per-project endpoint and no second fetch.
- *
- * A missing `project` is the not-found case. It is also the tenant boundary: a
- * client who pastes another client's /p/<uuid> lands here, because that project
- * was never in their payload to begin with.
- */
 export function ProjectDetail({ project, user, onBack }) {
   if (!project) {
-    return (
-      <EmptyState
-        icon="alert"
-        title="Project not found"
-        body="It may have been archived, or you no longer have access to it."
-        action={
-          <Button variant="ghost" onClick={onBack}>
-            Back to all projects
-          </Button>
-        }
-      />
-    );
+    return <EmptyState icon="alert" title="Project not found" body="It may have been archived, or you may no longer have access to it." action={<Button variant="ghost" onClick={onBack}>Back to all projects</Button>} />;
   }
 
   const status = getStatus(project.status);
@@ -42,184 +22,83 @@ export function ProjectDetail({ project, user, onBack }) {
 
   return (
     <div className="fade-in">
-      <div style={{ marginBottom: 20 }}>
-        {/* There is no left-arrow in the icon set; rotating the right one keeps
-            Icon.jsx untouched. */}
-        <Button variant="ghost" onClick={onBack}>
-          <span style={{ display: "inline-flex", transform: "rotate(180deg)" }}>
-            <Icon d={icons.arrow_right} size={14} color="currentColor" />
-          </span>
-          Back
-        </Button>
-      </div>
+      <button type="button" onClick={onBack} className="back-link">
+        <span style={{ display: "inline-flex", transform: "rotate(180deg)" }}><Icon d={icons.arrow_right} size={14} color="currentColor" /></span>
+        All projects
+      </button>
 
-      {/* A client already knows which company they are — this is for the owner. */}
-      {isOwner && project.clientName && (
-        <div
-          style={{
-            fontFamily: FONT_MONO,
-            fontSize: 11,
-            letterSpacing: 0.6,
-            textTransform: "uppercase",
-            color: colors.textMuted,
-            marginBottom: 6,
-          }}
-        >
-          {project.clientName}
+      <header style={{ margin: "25px 0 26px" }}>
+        <div className="eyebrow">{isOwner && project.clientName ? project.clientName : "Project overview"}</div>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 18, flexWrap: "wrap", marginTop: 8 }}>
+          <div>
+            <h1 className="page-title">{project.name}</h1>
+            {project.summary && <p className="page-subtitle">{project.summary}</p>}
+          </div>
+          <StatusBadge status={project.status} showHint />
         </div>
-      )}
+      </header>
 
-      <h1 style={{ margin: "0 0 12px", fontSize: 22, fontWeight: 600, color: colors.textPrimary }}>
-        {project.name}
-      </h1>
-
-      <StatusBadge status={project.status} showHint />
-
-      {project.summary && (
-        <p
-          style={{
-            margin: "16px 0 0",
-            maxWidth: "70ch",
-            fontSize: 14,
-            lineHeight: 1.7,
-            color: colors.textSecondary,
-          }}
-        >
-          {project.summary}
-        </p>
-      )}
-
-      <div className="card" style={{ padding: 18, margin: "24px 0" }}>
-        <ProgressBar
-          value={project.progress}
-          color={status.color}
-          label={project.name}
-          height={8}
-        />
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 12,
-            marginTop: 12,
-            fontFamily: FONT_MONO,
-            fontSize: 11,
-            color: colors.textMuted,
-          }}
-        >
-          {project.phaseNote && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <Icon d={icons.activity} size={12} color={colors.textMuted} />
-              {project.phaseNote}
-            </span>
-          )}
-          <span style={{ marginLeft: "auto" }} title={absoluteTime(project.updatedAt)}>
-            Updated {relativeTime(project.updatedAt)}
-          </span>
-        </div>
-      </div>
-
-      {links.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 32 }}>
-          {links.map((l) => (
-            <LinkButton key={l.id} link={l} showHost />
-          ))}
-        </div>
-      )}
-
-      <section>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            gap: 10,
-            marginBottom: 16,
-            paddingBottom: 8,
-            borderBottom: `1px solid ${colors.border}`,
-          }}
-        >
-          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: colors.textPrimary }}>
-            Updates
-          </h2>
-          {updates.length > 0 && (
-            <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: colors.textMuted }}>
-              {pluralize(updates.length, "update", "updates")}
-            </span>
-          )}
-        </div>
-
-        {updates.length === 0 ? (
-          <EmptyState
-            icon="clock"
-            title="No updates yet"
-            body="Progress notes will appear here as work moves along."
-          />
-        ) : (
-          <>
-            {/* Server order is newest-first; do not re-sort. */}
-            <div className="timeline">
-              {updates.map((u, i) => (
-                <div
-                  key={u.id}
-                  style={{ display: "flex", gap: 14, paddingBottom: i === updates.length - 1 ? 0 : 22 }}
-                >
-                  <span
-                    style={{
-                      position: "relative",
-                      zIndex: 1,
-                      flexShrink: 0,
-                      width: 11,
-                      height: 11,
-                      marginTop: 4,
-                      borderRadius: "50%",
-                      background: i === 0 ? colors.blue : colors.textFaint,
-                      border: `2px solid ${colors.bgBase}`,
-                    }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <div
-                      title={absoluteTime(u.createdAt)}
-                      style={{
-                        fontFamily: FONT_MONO,
-                        fontSize: 11,
-                        color: colors.textMuted,
-                        marginBottom: 4,
-                      }}
-                    >
-                      {relativeTime(u.createdAt)}
-                    </div>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: 13,
-                        lineHeight: 1.7,
-                        color: colors.textPrimary,
-                        whiteSpace: "pre-wrap",
-                      }}
-                    >
-                      {u.body}
-                    </p>
-                  </div>
-                </div>
-              ))}
+      <div className="project-detail-grid">
+        <main>
+          <section className="card" style={{ padding: 24, marginBottom: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 18 }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: colors.textMuted }}>Overall progress</div>
+                <div style={{ marginTop: 4, fontSize: 22, fontWeight: 700, color: colors.textPrimary }}>{Math.min(100, Math.max(0, Number(project.progress) || 0))}%</div>
+              </div>
+              <span style={{ width: 42, height: 42, display: "grid", placeItems: "center", borderRadius: 12, background: `${status.color}12` }}><Icon d={icons[status.icon]} size={19} color={status.color} /></span>
             </div>
+            <ProgressBar value={project.progress} color={status.color} label={project.name} height={8} hideValue />
+            <div className="form-two" style={{ marginTop: 20 }}>
+              <Detail label="Current focus" icon="activity" value={project.phaseNote || "No current focus has been added."} />
+              <Detail label="Last updated" icon="clock" value={relativeTime(project.updatedAt) || "Not yet updated"} title={absoluteTime(project.updatedAt)} />
+            </div>
+          </section>
 
-            {/* Only worth saying when the list is actually truncated. */}
-            {updates.length === UPDATE_LIMIT && (
-              <p
-                style={{
-                  margin: "20px 0 0",
-                  fontFamily: FONT_MONO,
-                  fontSize: 11,
-                  color: colors.textDim,
-                }}
-              >
-                Showing the {UPDATE_LIMIT} most recent updates.
-              </p>
+          <section className="card" style={{ padding: 24 }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 22, paddingBottom: 14, borderBottom: `1px solid ${colors.border}` }}>
+              <h2 style={{ margin: 0, fontSize: 17, color: colors.textPrimary }}>Project updates</h2>
+              {updates.length > 0 && <span style={{ fontSize: 11, color: colors.textMuted }}>{pluralize(updates.length, "update", "updates")}</span>}
+            </div>
+            {updates.length === 0 ? (
+              <div style={{ padding: "26px 0" }}><EmptyState icon="clock" title="No updates yet" body="Progress notes will appear here as work moves along." /></div>
+            ) : (
+              <div className="timeline">
+                {updates.map((update, index) => (
+                  <article key={update.id} style={{ display: "flex", gap: 16, paddingBottom: index === updates.length - 1 ? 0 : 28 }}>
+                    <span style={{ position: "relative", zIndex: 1, flexShrink: 0, width: 12, height: 12, marginTop: 5, borderRadius: "50%", background: index === 0 ? colors.blue : colors.textFaint, border: `3px solid ${colors.bgCard}`, boxShadow: index === 0 ? `0 0 0 3px ${colors.blue}18` : undefined }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <time title={absoluteTime(update.createdAt)} style={{ display: "block", marginBottom: 7, fontFamily: FONT_MONO, fontSize: 10, color: colors.textMuted }}>{index === 0 ? "Latest · " : ""}{relativeTime(update.createdAt)}</time>
+                      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.75, color: colors.textPrimary, whiteSpace: "pre-wrap" }}>{update.body}</p>
+                    </div>
+                  </article>
+                ))}
+                {updates.length === UPDATE_LIMIT && <p style={{ margin: "24px 0 0", fontSize: 11, color: colors.textDim }}>Showing the {UPDATE_LIMIT} most recent updates.</p>}
+              </div>
             )}
-          </>
-        )}
-      </section>
+          </section>
+        </main>
+
+        <aside style={{ display: "grid", gap: 16 }}>
+          <section className="card" style={{ padding: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}><Icon d={icons.external} size={15} color={colors.blue} /><h2 style={{ margin: 0, fontSize: 14, color: colors.textPrimary }}>Project links</h2></div>
+            {links.length ? <div style={{ display: "grid", gap: 9 }}>{links.map((link) => <LinkButton key={link.id} link={link} showHost />)}</div> : <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: colors.textMuted }}>No project links have been shared yet.</p>}
+          </section>
+          <section className="card metric-card" style={{ padding: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 9 }}><Icon d={icons.shield} size={14} color={colors.green} /><strong style={{ fontSize: 13, color: colors.textPrimary }}>Private workspace</strong></div>
+            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.65, color: colors.textMuted }}>Only invited contacts for this client can view this project.</p>
+          </section>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+function Detail({ label, icon, value, title }) {
+  return (
+    <div style={{ display: "flex", gap: 10, padding: 13, borderRadius: 11, background: colors.bgSubtle }}>
+      <Icon d={icons[icon]} size={14} color={colors.blue} />
+      <div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: colors.textMuted }}>{label}</div><div title={title} style={{ marginTop: 5, fontSize: 12, lineHeight: 1.5, color: colors.textPrimary }}>{value}</div></div>
     </div>
   );
 }

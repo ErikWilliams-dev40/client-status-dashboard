@@ -1,23 +1,26 @@
 // Centralized color palette. Import from here instead of repeating raw hex
 // inline — the few literals in styles.css are the only other copies.
 export const colors = {
-  bgBase: "#070B14", // page background
-  bgCard: "#0D1420", // surfaces
-  border: "#1E3A5F", // default border
-  blue: "#0EA5E9", // primary actions, services
-  indigo: "#6366F1", // secondary, agent thought steps
-  green: "#10B981", // success, storage, security
-  amber: "#F59E0B", // warnings, cost, agent answers
-  red: "#EF4444", // errors, p99 latency
-  redSoft: "#F87171", // error text
-  purple: "#C084FC", // AI/ML nodes
-  indigoSoft: "#818CF8", // agent secondary text
-  textPrimary: "#E2E8F0",
-  textSecondary: "#94A3B8",
-  textMuted: "#64748B",
-  textDim: "#475569",
-  textFaint: "#374151",
+  bgBase: "#F6F7FB",
+  bgSubtle: "#EEF2F7",
+  bgCard: "#FFFFFF",
+  border: "#DDE3EC",
+  borderStrong: "#C8D1DE",
+  blue: "#2563EB",
+  blueDark: "#1D4ED8",
+  indigo: "#4F46E5",
+  green: "#059669",
+  amber: "#D97706",
+  red: "#DC2626",
+  redSoft: "#B91C1C",
+  purple: "#7C3AED",
+  indigoSoft: "#6366F1",
+  textPrimary: "#172033",
+  textSecondary: "#475569",
+  textMuted: "#718096",
+  textDim: "#94A3B8",
+  textFaint: "#CBD5E1",
 };
 
-export const FONT_UI = "'Space Grotesk', sans-serif";
-export const FONT_MONO = "'JetBrains Mono', monospace";
+export const FONT_UI = "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+export const FONT_MONO = "'JetBrains Mono', 'SFMono-Regular', Consolas, monospace";

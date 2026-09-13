@@ -4,7 +4,7 @@ import { colors, FONT_MONO } from "../theme.js";
  * Progress track, tinted with the project's status color. Rendered even at 0 —
  * an empty track still says "this is tracked, and it hasn't started".
  */
-export function ProgressBar({ value, color, label, height = 6 }) {
+export function ProgressBar({ value, color, label, height = 6, hideValue = false }) {
   const pct = Math.min(100, Math.max(0, Number(value) || 0));
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -32,7 +32,7 @@ export function ProgressBar({ value, color, label, height = 6 }) {
           }}
         />
       </div>
-      <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: colors.textMuted }}>{pct}%</span>
+      {!hideValue && <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: colors.textMuted }}>{pct}%</span>}
     </div>
   );
 }

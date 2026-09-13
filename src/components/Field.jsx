@@ -4,13 +4,14 @@ import { Icon, icons } from "./Icon.jsx";
 
 const controlStyle = {
   width: "100%",
+  minHeight: 42,
   padding: "10px 12px",
-  borderRadius: 8,
-  background: "rgba(7,11,20,0.6)",
+  borderRadius: 10,
+  background: colors.bgCard,
   border: `1px solid ${colors.border}`,
   color: colors.textPrimary,
   fontFamily: FONT_UI,
-  fontSize: 13,
+  fontSize: 14,
   outline: "none",
 };
 
@@ -39,11 +40,10 @@ export function Field({ label, hint, as = "input", icon, options, style, id, ...
           style={{
             display: "block",
             marginBottom: 6,
-            fontFamily: FONT_MONO,
-            fontSize: 11,
-            letterSpacing: "0.04em",
-            textTransform: "uppercase",
-            color: colors.textMuted,
+            fontFamily: FONT_UI,
+            fontSize: 12,
+            fontWeight: 600,
+            color: colors.textSecondary,
           }}
         >
           {label}
@@ -65,6 +65,7 @@ export function Field({ label, hint, as = "input", icon, options, style, id, ...
           </span>
         )}
         <Control
+          className="field-control"
           id={controlId}
           aria-describedby={hintId}
           style={{

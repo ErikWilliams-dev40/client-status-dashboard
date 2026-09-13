@@ -29,7 +29,7 @@ function useLandingNotice() {
 }
 
 export default function App() {
-  // "loading" | "anonymous" | "authenticated"
+  // "loading" | "anonymous" | "authenticated" | "error"
   const [phase, setPhase] = useState("loading");
   const [data, setData] = useState(null);
   const notice = useLandingNotice();
@@ -48,7 +48,7 @@ export default function App() {
       // lands the user somewhere they can act.
       console.error(err);
       setData(null);
-      setPhase("anonymous");
+      setPhase("error");
     }
   }, []);
 
@@ -119,6 +119,7 @@ export default function App() {
   }, []);
 
   if (phase === "loading") return <Booting />;
+  if (phase === "error") return <LoadError onRetry={load} />;
   if (phase === "anonymous") return <LoginView notice={notice} />;
   return <SignedIn data={data} onSignOut={signOut} onApplied={applyWrite} />;
 }
@@ -133,9 +134,29 @@ function Booting() {
         background: colors.bgBase,
       }}
     >
-      <span className="spin" style={{ display: "inline-flex" }}>
-        <Icon d={icons.refresh} size={20} color={colors.textMuted} />
-      </span>
+      <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif" }}>
+        <span className="spin" style={{ display: "inline-flex" }}>
+          <Icon d={icons.refresh} size={22} color={colors.blue} />
+        </span>
+        <div style={{ marginTop: 12, color: colors.textMuted, fontSize: 13 }}>Preparing your workspace…</div>
+      </div>
+    </div>
+  );
+}
+
+function LoadError({ onRetry }) {
+  return (
+    <div className="grid-bg" style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 20, background: colors.bgBase, fontFamily: "Inter, sans-serif" }}>
+      <div className="card" style={{ width: "100%", maxWidth: 440, padding: 32, textAlign: "center" }}>
+        <span style={{ width: 44, height: 44, display: "grid", placeItems: "center", margin: "0 auto 16px", borderRadius: 12, background: `${colors.amber}14` }}>
+          <Icon d={icons.alert} size={20} color={colors.amber} />
+        </span>
+        <h1 style={{ margin: 0, fontSize: 20, color: colors.textPrimary }}>We couldn’t load your workspace</h1>
+        <p style={{ margin: "10px 0 22px", color: colors.textSecondary, fontSize: 14, lineHeight: 1.6 }}>
+          Your session is still safe. This is usually a temporary connection issue.
+        </p>
+        <Button icon="refresh" onClick={onRetry}>Try again</Button>
+      </div>
     </div>
   );
 }
@@ -167,9 +188,11 @@ function SignedIn({ data, onSignOut, onApplied }) {
 
   const adminLink = isOwner ? (
     <Button
+      className="shell-action"
       variant="ghost"
       icon={showAdmin ? "layers" : "settings"}
       onClick={() => navigate(showAdmin ? "/" : "/admin")}
+      aria-label={showAdmin ? "Dashboard" : "Admin"}
     >
       {showAdmin ? "Dashboard" : "Admin"}
     </Button>

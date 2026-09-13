@@ -30,7 +30,7 @@ export function ProjectEditor({ clients, projects, selected, onSelect, onAction,
 
   return (
     <div style={{ display: "grid", gap: 20 }}>
-      <section className="card" style={{ padding: 20 }}>
+      <section className="card" style={{ padding: 24 }}>
         <Header icon="plus" title="New project" />
         {creating ? (
           <NewProjectForm
@@ -69,7 +69,7 @@ export function ProjectEditor({ clients, projects, selected, onSelect, onAction,
         )}
       </section>
 
-      <section className="card" style={{ padding: 20 }}>
+      <section className="card" style={{ padding: 24 }}>
         <Header icon="layers" title="Edit a project" />
         <Field
           label="Project"
@@ -112,7 +112,7 @@ function NewProjectForm({ clients, draft, setDraft, busy, onSubmit, onCancel }) 
         onChange={set("summary")}
         placeholder="One line the client will read first"
       />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div className="form-two">
         <Field
           label="Status"
           as="select"
@@ -160,7 +160,7 @@ function ExistingProjectForm({ project, onAction, busy }) {
     <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
       <Field label="Name" value={form.name} onChange={set("name")} />
       <Field label="Summary" value={form.summary} onChange={set("summary")} />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div className="form-two">
         <Field label="Status" as="select" value={form.status} onChange={set("status")} options={STATUSES} />
         <Field
           label="Progress %"
@@ -214,7 +214,7 @@ function ExistingProjectForm({ project, onAction, busy }) {
         </p>
         <div style={{ display: "grid", gap: 10 }}>
           {links.map((l, i) => (
-            <div key={i} style={{ display: "grid", gridTemplateColumns: "120px 1fr 140px auto", gap: 8 }}>
+            <div key={i} className="link-row">
               <Field
                 as="select"
                 value={l.kind}

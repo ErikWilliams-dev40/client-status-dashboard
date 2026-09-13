@@ -61,22 +61,29 @@ export function AdminView({ data, onApplied }) {
 
   return (
     <div className="fade-in">
-      <div style={{ marginBottom: 20 }}>
-        <h2 style={{ margin: 0, fontFamily: FONT_UI, fontSize: 20, color: colors.textPrimary }}>
-          Admin
-        </h2>
-        <p style={{ margin: "4px 0 0", fontFamily: FONT_MONO, fontSize: 11, color: colors.textMuted }}>
-          {clients.length} clients · {projects.length} projects · {users.length} contacts
-        </p>
+      <div style={{ marginBottom: 26 }}>
+        <div className="eyebrow">Owner workspace</div>
+        <h1 className="page-title" style={{ marginTop: 7 }}>Manage delivery</h1>
+        <p className="page-subtitle">Create client workspaces, publish progress, and manage access from one place.</p>
+      </div>
+
+      <div className="stats-grid" style={{ marginBottom: 24 }}>
+        <AdminStat value={projects.length} label="Projects" />
+        <AdminStat value={clients.length} label="Clients" />
+        <AdminStat value={users.length} label="Contacts" />
       </div>
 
       <div
         role="tablist"
+        className="card"
         style={{
           display: "flex",
           gap: 4,
-          marginBottom: 20,
-          borderBottom: `1px solid ${colors.border}`,
+          marginBottom: 24,
+          padding: 5,
+          width: "fit-content",
+          maxWidth: "100%",
+          overflowX: "auto",
         }}
       >
         {TABS.map((t) => (
@@ -87,11 +94,11 @@ export function AdminView({ data, onApplied }) {
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
             style={{
-              padding: "9px 14px",
+              padding: "9px 16px",
               border: 0,
-              borderBottom: `2px solid ${tab === t.id ? colors.blue : "transparent"}`,
-              background: "transparent",
-              color: tab === t.id ? colors.textPrimary : colors.textMuted,
+              borderRadius: 10,
+              background: tab === t.id ? colors.bgSubtle : "transparent",
+              color: tab === t.id ? colors.blue : colors.textMuted,
               fontFamily: FONT_UI,
               fontSize: 13,
               fontWeight: 600,
@@ -127,6 +134,15 @@ export function AdminView({ data, onApplied }) {
       )}
 
       <Toast toast={toast} onDismiss={() => setToast(null)} />
+    </div>
+  );
+}
+
+function AdminStat({ value, label }) {
+  return (
+    <div className="card metric-card" style={{ padding: "15px 16px" }}>
+      <strong style={{ display: "block", fontSize: 20, color: colors.textPrimary }}>{value}</strong>
+      <span style={{ display: "block", marginTop: 2, fontSize: 11, color: colors.textMuted }}>{label}</span>
     </div>
   );
 }

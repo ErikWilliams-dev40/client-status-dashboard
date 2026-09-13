@@ -19,18 +19,20 @@ export function LinkButton({ link, showHost = false }) {
       target="_blank"
       rel="noopener noreferrer"
       onClick={(e) => e.stopPropagation()}
+      className="link-button"
       style={{
         display: "inline-flex",
         flexDirection: showHost ? "column" : "row",
         alignItems: showHost ? "flex-start" : "center",
         gap: showHost ? 2 : 6,
         padding: showHost ? "8px 12px" : "5px 10px",
-        borderRadius: 8,
+        borderRadius: 10,
         border: `1px solid ${colors.border}`,
         color: colors.textSecondary,
         fontFamily: FONT_UI,
         fontSize: 12,
         fontWeight: 600,
+        background: colors.bgCard,
         textDecoration: "none",
       }}
     >

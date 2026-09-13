@@ -46,7 +46,7 @@ export function Toast({ toast, onDismiss }) {
         borderRadius: 10,
         background: colors.bgCard,
         border: `1px solid ${tone.color}55`,
-        boxShadow: "0 8px 28px rgba(0,0,0,0.45)",
+        boxShadow: "0 18px 48px rgba(15,23,42,.18)",
         fontFamily: FONT_UI,
         fontSize: 13,
         color: colors.textPrimary,

@@ -50,7 +50,7 @@ export function ClientManager({ clients, users, onAction, busy }) {
 
   return (
     <div style={{ display: "grid", gap: 20 }}>
-      <section className="card" style={{ padding: 20 }}>
+      <section className="card" style={{ padding: 24 }}>
         <SectionTitle icon="plus" title="New client" />
         <form onSubmit={createClient} style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
           <div style={{ flex: 1 }}>
@@ -67,7 +67,7 @@ export function ClientManager({ clients, users, onAction, busy }) {
         </form>
       </section>
 
-      <section className="card" style={{ padding: 20 }}>
+      <section className="card" style={{ padding: 24 }}>
         <SectionTitle icon="mail" title="Invite a contact" />
         <p style={{ margin: "0 0 14px", fontSize: 12, color: colors.textMuted }}>
           No email is sent. Tell them to visit the sign-in page and enter this address
@@ -84,7 +84,7 @@ export function ClientManager({ clients, users, onAction, busy }) {
               ...clients.map((c) => ({ id: c.id, label: c.name })),
             ]}
           />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="form-two">
             <Field
               label="Email"
               type="email"
@@ -117,7 +117,7 @@ export function ClientManager({ clients, users, onAction, busy }) {
         <EmptyState icon="user" title="No clients yet" body="Create one above to get started." />
       ) : (
         clients.map((c) => (
-          <section key={c.id} className="card" style={{ padding: 20 }}>
+          <section key={c.id} className="card" style={{ padding: 24 }}>
             {renaming?.id === c.id ? (
               <form
                 onSubmit={submitRename}

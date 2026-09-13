@@ -7,6 +7,8 @@ only the projects they're waiting on: current status, the latest update, and but
 straight through to the live site, staging, or the repo. The owner manages everything
 from inside the same app, so changing a status doesn't need a redeploy.
 
+![Project Status dashboard frontend](./frontend-preview.png)
+
 ## Stack
 
 React 18 + Vite 6 · Vercel Edge Functions · Neon Postgres · Resend
